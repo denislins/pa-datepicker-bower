@@ -1,0 +1,22 @@
+{
+  "author": {
+    "name": "Denis Lins <denis.lins@outlook.com>"
+  },
+  "name": "pa-datepicker-bower",
+  "keywords": [
+    "angular",
+    "datepicker",
+    "angularjs"
+  ],
+  "license": "MIT",
+  "ignore": [],
+  "description": "A complete datepicker written from scratch built on top of AngularJS",
+  "version": "0.1.0",
+  "main": [
+    "./paDatepicker.min.js",
+    "./paDatepicker.tpls.js",
+  ],
+  "dependencies": {
+    "angular": "~1.3.14"
+  }
+}
