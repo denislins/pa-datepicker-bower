@@ -435,9 +435,14 @@
           return this.config.mode === 'range';
         },
 
-        isDateDisabled: function(date) {
-          return (this.config.minDate && date < this.config.minDate) ||
-            (this.config.maxDate && date > this.config.maxDate);
+        isDateEnabled: function(date) {
+          if (this.config.minDate && this.compare(date, this.config.minDate) < 0) {
+            return false;
+          } else if (this.config.maxDate && this.compare(date, this.config.maxDate) > 0) {
+            return false;
+          } else {
+            return true;
+          }
         },
 
         isDateSelected: function(date) {
@@ -465,16 +470,28 @@
           }
 
           var selection = this.ngModel[period];
-          return selection && date >= selection.start && date <= selection.end;
+
+          if (selection && selection.start && selection.end) {
+            return selection && this.compare(date, selection.start) >= 0 &&
+              this.compare(date, selection.end) <= 0;
+          } else {
+            return false;
+          }
         },
 
         isDateWithinSelection: function(date) {
           var selection = this.selections[this.currentPeriod];
-          return date >= selection.start && date <= selection.end;
+
+          if (selection && selection.start && selection.end) {
+            return selection && this.compare(date, selection.start) >= 0 &&
+              this.compare(date, selection.end) <= 0;
+          } else {
+            return false;
+          }
         },
 
         isToday: function(date) {
-          return date.getTime() === this.today.getTime();
+          return this.compare(date, this.today) === 0;
         },
 
         getStartingDay: function() {
@@ -485,6 +502,13 @@
           if (this.popup) {
             this.popup.close();
           }
+        },
+
+        compare: function(date1, date2) {
+          var subject1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+          var subject2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+
+          return subject1 - subject2;
         },
 
       });
@@ -504,7 +528,6 @@
       angular.extend(this, {
 
         init: function() {
-          this.updatePanel();
           this.initConfigWatcher();
         },
 
@@ -552,32 +575,40 @@
         },
 
         selectDate: function(date) {
-          if (!this.isDisabled(date)) {
+          if (this.isEnabled(date)) {
             this.container.selectDate(date);
           }
         },
 
         previewSelection: function(date) {
-          if (!this.isDisabled(date)) {
+          if (this.isEnabled(date)) {
             this.container.previewSelection(date);
           }
         },
 
+        isEnabled: function(date) {
+          return this.container.isDateEnabled(date) && this.isDateInsideMonth(date);
+        },
+
         isDisabled: function(date) {
-          return this.container.isDateDisabled(date) || date < this.start ||
-            date >= this.end;
+          return !this.isEnabled(date);
+        },
+
+        isDateInsideMonth: function(date) {
+          return this.container.compare(date, this.start) >= 0 &&
+            this.container.compare(this.end, date) >= 0;
         },
 
         isDateSelected: function(date) {
-          return !this.isDisabled(date) && this.container.isDateSelected(date);
+          return this.isEnabled(date) && this.container.isDateSelected(date);
         },
 
         isDateWithinBasePeriod: function(date) {
-          return !this.isDisabled(date) && this.container.isDateWithinBasePeriod(date);
+          return this.isEnabled(date) && this.container.isDateWithinBasePeriod(date);
         },
 
         isDateWithinComparisonPeriod: function(date) {
-          return !this.isDisabled(date) && this.container.isDateWithinComparisonPeriod(date);
+          return this.isEnabled(date) && this.container.isDateWithinComparisonPeriod(date);
         },
 
       });
@@ -643,7 +674,6 @@
 
         preventClosing: function($event) {
           $event.stopPropagation();
-          $event.preventDefault();
         },
 
         close: function() {
