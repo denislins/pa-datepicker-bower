@@ -294,7 +294,7 @@
   'use strict';
 
   angular.module('pa-datepicker').controller('DatepickerContainerCtrl',
-    ['paDatepickerConfig', function(paDatepickerConfig) {
+    ['$scope', 'paDatepickerConfig', function($scope, paDatepickerConfig) {
 
       angular.extend(this, {
 
@@ -307,6 +307,14 @@
           this.initCurrentPeriod();
           this.initModel();
           this.initPanels();
+          this.initMonitorWatcher();
+        },
+
+        initMonitorWatcher: function() {
+          $scope.$watch(
+            function() { return this.ngModel; }.bind(this),
+            this.initModel.bind(this)
+          );
         },
 
         initConfig: function() {
@@ -347,6 +355,11 @@
             this.ngModel = {};
           } else if (this.ngModel instanceof Date) {
             this.ngModel.setHours(0, 0, 0, 0);
+          } else if (typeof(this.ngModel) === 'string' || this.ngModel instanceof String) {
+            this.ngModel = new Date(this.ngModel);
+            this.ngModel.setHours(0, 0, 0, 0);
+          } else if (this.ngModel === null) {
+            this.ngModel = undefined;
           }
         },
 
@@ -359,12 +372,22 @@
         },
 
         getRangePanelStart: function() {
-          if (this.ngModel.comparison && this.ngModel.comparison.end instanceof Date) {
-            return this.ngModel.comparison.end;
-          } else if (this.ngModel.base && this.ngModel.base.end instanceof Date) {
-            return this.ngModel.base.end;
+          if (this.ngModel.base && this.ngModel.base.end instanceof Date) {
+            if (this.ngModel.comparison && this.ngModel.comparison.end instanceof Date) {
+              return this.getFurtherDate();
+            } else {
+              return this.ngModel.base.end;
+            }
           } else {
             return this.today;
+          }
+        },
+
+        getFurtherDate: function() {
+          if (this.compare(this.ngModel.comparison.end, this.ngModel.base.end) > 0) {
+            return this.ngModel.comparison.end;
+          } else {
+            return this.ngModel.base.end;
           }
         },
 
@@ -451,7 +474,7 @@
               this.isDateWithinComparisonPeriod(date);
           }
 
-          return this.ngModel && date.getTime() === this.ngModel.getTime();
+          return this.ngModel instanceof Date && date.getTime() === this.ngModel.getTime();
         },
 
         isDateWithinBasePeriod: function(date) {
