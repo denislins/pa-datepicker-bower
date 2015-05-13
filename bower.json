@@ -11,7 +11,7 @@
   "license": "MIT",
   "ignore": [],
   "description": "A complete datepicker written from scratch built on top of AngularJS",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": [
     "./paDatepicker.min.js",
     "./paDatepicker.tpls.js"

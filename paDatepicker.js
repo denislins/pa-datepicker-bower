@@ -69,6 +69,7 @@
         mode: '@',
         currentPeriod: '=?',
         startingDay: '@',
+        showOutliers: '@',
         minDate: '=',
         maxDate: '=',
         ngModel: '=',
@@ -146,6 +147,7 @@
     panels: 1,
     mode: 'single',
     startingDay: 0,
+    showOutliers: true,
     minDate: null,
     maxDate: null,
     popup: {
@@ -294,12 +296,12 @@
   'use strict';
 
   angular.module('pa-datepicker').controller('DatepickerContainerCtrl',
-    ['$scope', 'paDatepickerConfig', function($scope, paDatepickerConfig) {
+    ['$rootScope', '$scope', 'paDatepickerConfig',
+    function($rootScope, $scope, paDatepickerConfig) {
 
       angular.extend(this, {
 
         init: function() {
-          this.datePanels = [];
           this.selections = {};
 
           this.initConfig();
@@ -311,10 +313,12 @@
         },
 
         initMonitorWatcher: function() {
-          $scope.$watch(
-            function() { return this.ngModel; }.bind(this),
-            this.initModel.bind(this)
-          );
+          $scope.$watch(function() {
+            return this.ngModel;
+          }.bind(this), function() {
+            this.initModel();
+            this.initPanels();
+          }.bind(this));
         },
 
         initConfig: function() {
@@ -322,7 +326,8 @@
 
           angular.forEach(this.config, function(value, option) {
             if (typeof this[option] !== 'undefined') {
-              this.config[option] = this[option];
+              var newValue = this[option] !== 'false' ? this[option] : false;
+              this.config[option] = newValue;
             }
           }.bind(this));
         },
@@ -333,6 +338,8 @@
         },
 
         initPanels: function() {
+          this.datePanels = [];
+
           var numberOfPanels = parseInt(this.config.panels, 10);
           var base = this.getPanelStart();
 
@@ -351,14 +358,14 @@
         },
 
         initModel: function() {
-          if (this.isRange() && !this.ngModel) {
+          if (this.isRange() && typeof this.ngModel !== 'object') {
             this.ngModel = {};
           } else if (this.ngModel instanceof Date) {
             this.ngModel.setHours(0, 0, 0, 0);
           } else if (typeof(this.ngModel) === 'string' || this.ngModel instanceof String) {
             this.ngModel = new Date(this.ngModel);
             this.ngModel.setHours(0, 0, 0, 0);
-          } else if (this.ngModel === null) {
+          } else if (!this.isRange()) {
             this.ngModel = undefined;
           }
         },
@@ -420,6 +427,7 @@
 
         startSelection: function(date) {
           this.selections[this.currentPeriod] = { selected: date, start: date, end: date };
+          $rootScope.$broadcast('paDatepicker.selection.started');
         },
 
         previewSelection: function(date) {
@@ -448,6 +456,7 @@
           }
 
           this.selections[this.currentPeriod] = null;
+          $rootScope.$broadcast('paDatepicker.selection.ended');
         },
 
         updateCurrentPeriod: function(start, end) {
@@ -505,12 +514,8 @@
         isDateWithinSelection: function(date) {
           var selection = this.selections[this.currentPeriod];
 
-          if (selection && selection.start && selection.end) {
-            return selection && this.compare(date, selection.start) >= 0 &&
-              this.compare(date, selection.end) <= 0;
-          } else {
-            return false;
-          }
+          return selection && this.compare(date, selection.start) >= 0 &&
+            this.compare(date, selection.end) <= 0;
         },
 
         isToday: function(date) {
@@ -646,14 +651,15 @@
   'use strict';
 
   angular.module('pa-datepicker').controller('DatepickerPopupCtrl',
-    ['$scope', '$document', '$timeout', 'paDatepickerConfig',
-    function($scope, $document, $timeout, paDatepickerConfig) {
+    ['$rootScope', '$scope', '$document', '$timeout', 'paDatepickerConfig',
+    function($rootScope, $scope, $document, $timeout, paDatepickerConfig) {
 
       angular.extend(this, {
 
         init: function() {
           this.initOpeningWatcher();
           this.initConfig();
+          this.initSelectionHandlers();
           this.initClickHandler();
           this.openingHandler();
         },
@@ -671,6 +677,16 @@
           if (this.closeAfterSelection !== undefined) {
             this.config.closeAfterSelection = this.closeAfterSelection === 'true';
           }
+        },
+
+        initSelectionHandlers: function() {
+          $rootScope.$on('paDatepicker.selection.started', function() {
+            this.isSelectingPeriod = true;
+          }.bind(this));
+
+          $rootScope.$on('paDatepicker.selection.ended', function() {
+            this.isSelectingPeriod = false;
+          }.bind(this));
         },
 
         initClickHandler: function() {
@@ -691,7 +707,11 @@
 
         onClickOutside: function() {
           $scope.$apply(function() {
-            this.isOpen = false;
+            if (this.isSelectingPeriod !== true) {
+              this.closePopup();
+            } else {
+              $rootScope.$broadcast('paDatepicker.popup.unfinishedSelection');
+            }
           }.bind(this));
         },
 
@@ -701,9 +721,13 @@
 
         close: function() {
           if (this.config.closeAfterSelection) {
-            this.isOpen = false;
-            this.openingHandler();
+            this.closePopup();
           }
+        },
+
+        closePopup: function() {
+          this.isOpen = false;
+          this.openingHandler();
         },
 
       });
