@@ -304,7 +304,6 @@
         init: function() {
           this.selections = {};
 
-          this.initConfig();
           this.initToday();
           this.initCurrentPeriod();
           this.initModel();
@@ -321,17 +320,6 @@
           }.bind(this));
         },
 
-        initConfig: function() {
-          this.config = angular.copy(paDatepickerConfig);
-
-          angular.forEach(this.config, function(value, option) {
-            if (typeof this[option] !== 'undefined') {
-              var newValue = this[option] !== 'false' ? this[option] : false;
-              this.config[option] = newValue;
-            }
-          }.bind(this));
-        },
-
         initToday: function() {
           this.today = new Date();
           this.today.setHours(0, 0, 0, 0);
@@ -340,7 +328,7 @@
         initPanels: function() {
           this.datePanels = [];
 
-          var numberOfPanels = parseInt(this.config.panels, 10);
+          var numberOfPanels = parseInt(this.getConfig('panels'), 10);
           var base = this.getPanelStart();
 
           for (var i = 0; i < numberOfPanels; i++) {
@@ -368,6 +356,11 @@
           } else if (!this.isRange()) {
             this.ngModel = undefined;
           }
+        },
+
+        getConfig: function(config) {
+          var value = this[config] || paDatepickerConfig[config];
+          return value !== 'false' ? value : false;
         },
 
         getPanelStart: function() {
@@ -426,7 +419,10 @@
         },
 
         startSelection: function(date) {
-          this.selections[this.currentPeriod] = { selected: date, start: date, end: date };
+          this.selections[this.currentPeriod] = {
+            selected: date, start: date, end: date
+          };
+
           $rootScope.$broadcast('paDatepicker.selection.started');
         },
 
@@ -464,13 +460,16 @@
         },
 
         isRange: function() {
-          return this.config.mode === 'range';
+          return this.getConfig('mode') === 'range';
         },
 
         isDateEnabled: function(date) {
-          if (this.config.minDate && this.compare(date, this.config.minDate) < 0) {
+          var minDate = this.getConfig('minDate');
+          var maxDate = this.getConfig('maxDate');
+
+          if (minDate && this.compare(date, minDate) < 0) {
             return false;
-          } else if (this.config.maxDate && this.compare(date, this.config.maxDate) > 0) {
+          } else if (maxDate && this.compare(date, maxDate) > 0) {
             return false;
           } else {
             return true;
@@ -483,7 +482,8 @@
               this.isDateWithinComparisonPeriod(date);
           }
 
-          return this.ngModel instanceof Date && date.getTime() === this.ngModel.getTime();
+          return this.ngModel instanceof Date &&
+            date.getTime() === this.ngModel.getTime();
         },
 
         isDateWithinBasePeriod: function(date) {
@@ -523,7 +523,7 @@
         },
 
         getStartingDay: function() {
-          return (parseInt(this.config.startingDay, 10) % 7) || 0;
+          return (parseInt(this.getConfig('startingDay'), 10) % 7) || 0;
         },
 
         closePopup: function() {
